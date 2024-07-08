@@ -1,5 +1,10 @@
-import { text } from "express";
-import { Sequelize, DataTypes, where } from "sequelize";
+import  express  from "express";
+import { Sequelize, DataTypes} from "sequelize";
+
+const app = express();
+const port = 3000;
+
+app.use(express.json());
 
 const sequelize = new Sequelize("todo_list", "root", "", {
   host: "MySQL-8.2",
@@ -69,6 +74,7 @@ const Todo = sequelize.define(
     tableName: "todos",
   }
 );
+
 (async () => {
   try {
     await User.sync({
@@ -80,79 +86,116 @@ const Todo = sequelize.define(
       alter: true,
       force: false,
     });
-
-    if (false) {
-      // Создание юзера Create
-      const user = await User.create({
-        first_name: "Игнат",
-        last_name: "Никифоров",
-        country: "USA",
-        birthday: "1940-04-03",
-        email: "Ignat.doe@gmail.com",
-        password: "143433456",
-      });
-      console.log(`Создан юзер с id: ${user.id}`);
-
-      const todo = await Todo.create({
-        text: "Learn React",
-        done: false,
-      });
-      console.log(`Создана задача ${todo}`);
-    }
-
-    if (false) {
-      // Получение юзера Read
-      const users = await User.findAll({
-        where: {
-          country: "USA",
-        },
-      });
-      console.log(users);
-
-      const todos = await Todo.findAll();
-      console.log(todos.every(todo => todo instanceof Todo));
-      console.log('Все задачи:', JSON.stringify(todos, null, 2));
-    }
-
-    if (false) {
-      //Обновление данных юзера update
-      const user = await User.update(
-        { first_name: "Updated" },
-        {
-          where: {
-            first_name: "Игнат",
-          },
-        }
-      );
-      console.log(user);
-      const todo = await Todo.update(
-        { done: true },
-        {
-          where: {
-            text: "Learn React",
-          },
-        }
-      );
-      console.log("Изменения внесены");
-    }
-    if (false) {
-      // Удаление юзера Delete
-      const user = await User.destroy({
-        where: {
-          country: "Россия",
-        },
-      });
-      console.log("Пользователь удален");
-      const todo = await Todo.destroy(
-        {
-          where: {
-            text: "Learn React",
-          },
-        }
-      );
-      console.log("Задача удалена");
-    }
   } catch (error) {
     console.error(error);
   }
 })();
+
+// Создание юзера Create
+app.post('/users', async (req, res) => {
+  try {
+    const user = await User.create(req.body);
+    res.status(201).json(user)
+    console.log(`Создан юзер с id: ${user.id}`);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+})
+
+app.post('/todos', async (req, res) => {
+  try {
+    const todo = await Todo.create(req.body);
+    res.status(201).json(todo)
+    console.log(`Создана задача ${todo}`);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+})
+
+app.get('/users', async (req, res) => {
+  try {
+    const users = await User.findAll(req.body);
+    res.status(200).json(users)
+    console.log(users);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+})
+
+app.get('/todos', async (req, res) => {
+  try {
+    const todos = await Todo.findAll(req.body);
+    res.status(200).json(todos)
+    console.log(todos);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+})
+
+app.put('/users/:id', async (req, res) => {
+  try {
+    const user = await User.update(req.body, {
+      where: { id: req.params.id }
+    });
+    if (user) {
+      const updatedUser = await User.findOne({ where: { id: req.params.id } });
+      res.status(200).json(updatedUser);
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(400).json({ message: 'User not found' });
+  }
+})
+
+app.put('/todos/:id', async (req, res) => {
+  try {
+    const [todo] = await Todo.update(req.body, {
+      where: { id: req.params.id }
+    });
+    if(todo){
+      const updatedTodo = await Todo.findOne({ where: { id: req.params.id } });
+      res.status(200).json(updatedTodo);
+      } else {
+        res.status(404).json({ message: 'Todo not found' });
+    }
+  } catch (error) {
+    res.status(400).json({message: 'Todo not found'})
+  }
+})
+
+app.delete('/users/:id', async (req, res) => {
+  try {
+    const user = await User.destroy({
+      where: {
+        id: req.params.id
+      },
+    });
+    if (user) {
+      res.status(200).json({ message: 'User deleted' });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(400).json({ message: 'User not found' });
+  }
+})
+
+app.delete('/todos/:id', async (req, res) => {
+  try {
+    const todo = await Todo.destroy({
+      where: {id: req.params.id}
+    });
+    if (todo){
+      res.status(200).json({message: 'todo deleted'})
+    } else {
+      res.status(404).json({message: 'Todo not found'})
+    }
+  } catch (error) {
+    res.status(400).json({message: 'Todo not found'})
+  }
+})
+
+app.listen(port, () => {
+  console.log(`app запущен на http://localhost:${port}`);
+})
